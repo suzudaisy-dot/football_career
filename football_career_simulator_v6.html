@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Football Career Simulator v6</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b1220;color:#e8eef7;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.wrap{max-width:1180px;margin:auto;padding:24px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:18px}h1{margin:0;font-size:28px}.muted{color:#93a4bd;font-size:13px}.grid{display:grid;grid-template-columns:330px 1fr;gap:18px}.card{background:#121c2d;border:1px solid #24344d;border-radius:14px;padding:18px;box-shadow:0 8px 25px #0003}label{display:block;font-size:13px;color:#a9b8cc;margin:12px 0 6px}input,select{width:100%;padding:10px 11px;border-radius:9px;border:1px solid #344861;background:#0c1524;color:#fff}button{border:0;border-radius:9px;padding:13px 16px;font-weight:700;cursor:pointer;background:#2f80ed;color:white;touch-action:manipulation;-webkit-tap-highlight-color:transparent;min-height:46px}button:disabled{opacity:.55;cursor:not-allowed}button.secondary{background:#25354e}.actions{display:flex;gap:8px;margin-top:15px;flex-wrap:wrap}.hero{display:grid;grid-template-columns:1fr auto;gap:15px;align-items:center}.name{font-size:26px;font-weight:800}.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#213657;color:#9bc5ff;font-size:12px;margin:3px}.ovr{font-size:42px;font-weight:900}.statgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:14px}.stat{background:#0c1524;border-radius:9px;padding:9px;text-align:center}.stat b{display:block;font-size:19px}.stat span{font-size:11px;color:#8fa1ba}.meta{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:16px}.meta div{background:#0c1524;border-radius:9px;padding:10px}.meta small{display:block;color:#8295af}.meta b{font-size:15px}table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px}th,td{padding:9px 6px;border-bottom:1px solid #24344d;text-align:right;white-space:nowrap}th:first-child,td:first-child{text-align:left}.log{max-height:240px;overflow:auto;margin-top:10px}.event{padding:9px;border-left:3px solid #3b82f6;background:#0d1727;margin-bottom:6px;border-radius:5px}.empty{padding:28px;text-align:center;color:#8192ab}.offerGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin:10px 0}.offer{background:#0c1524;border:1px solid #2b405e;border-radius:10px;padding:12px}.offer h4{margin:0 0 5px}.offer p{margin:5px 0;color:#9fb0c7;font-size:12px}.offer .salary{font-size:18px;font-weight:800;color:#fff}.offer button{width:100%;margin-top:8px}.notice{padding:11px;border-radius:9px;background:#172943;border:1px solid #2b4a73;margin:10px 0}.retired{opacity:.65}.page{animation:pageIn .18s ease}@keyframes pageIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}@media(max-width:800px){.grid{grid-template-columns:1fr}.statgrid{grid-template-columns:repeat(3,1fr)}.meta{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="top"><div><h1>⚽ Football Career Simulator</h1><div class="muted">能力だけでなく、出場機会・年齢・成績・クラブ状況でキャリアが変わる</div></div><div class="muted" id="seasonLabel">未開始</div></div>
+<div class="grid">
+<section class="card">
+<h2>選手作成</h2>
+<label>選手名</label><input id="name" value="鈴木 太郎">
+<label>開始年齢</label><input id="age" type="number" min="15" max="25" value="18">
+<label>ポジション</label><select id="pos"><option>GK</option><option>CB</option><option>SB</option><option>DMF</option><option>CMF</option><option>AMF</option><option>WG</option><option>ST</option><option>CF</option></select>
+<label>プレースタイル</label><select id="style"><option>テクニック型</option><option>スピード型</option><option>フィジカル型</option><option>パサー型</option><option>ストライカー型</option><option>守備職人型</option></select>
+<label>開始クラブ</label><select id="club">
+<option value="高校サッカー">高校サッカー</option><option value="大学サッカー">大学サッカー</option>
+</select>
+<div class="actions"><button id="startBtn" type="button">キャリア開始</button><button id="resetBtn" class="secondary" type="button">リセット</button></div>
+<hr style="border-color:#24344d;margin:20px 0">
+<div class="muted">2026年Jリーグの実在クラブを使用。欧州移籍は条件を満たした場合のみ発生します。</div>
+<ul class="muted"><li>オファーが複数なら自分で選択</li><li>J1→J2→J3と落ちることもある</li><li>代表招集は現在地・成績・年齢を考慮</li><li>契約満了・戦力外・レンタルも発生</li></ul>
+</section>
+<section class="card" id="main"><div id="careerPage" class="page"><div class="empty">選手を作成するとキャリアが始まります。</div></div><div id="resultPage" class="page" hidden></div></section>
+</div></div>
+<script>
+const clubs={
+J1:["鹿島アントラーズ","水戸ホーリーホック","浦和レッズ","ジェフユナイテッド千葉","柏レイソル","FC東京","東京ヴェルディ","FC町田ゼルビア","川崎フロンターレ","横浜F・マリノス","清水エスパルス","名古屋グランパス","京都サンガF.C.","ガンバ大阪","セレッソ大阪","ヴィッセル神戸","ファジアーノ岡山","サンフレッチェ広島","アビスパ福岡","V・ファーレン長崎"],
+J2:["北海道コンサドーレ札幌","ヴァンラーレ八戸","ベガルタ仙台","ブラウブリッツ秋田","モンテディオ山形","いわきFC","栃木シティ","RB大宮アルディージャ","横浜FC","湘南ベルマーレ","ヴァンフォーレ甲府","アルビレックス新潟","カターレ富山","藤枝MYFC","ジュビロ磐田","徳島ヴォルティス","愛媛FC","FC今治","サガン鳥栖","大分トリニータ"],
+J3:["福島ユナイテッドFC","栃木SC","ザスパ群馬","SC相模原","松本山雅FC","AC長野パルセイロ","ツエーゲン金沢","FC岐阜","レイラック滋賀FC","FC大阪","奈良クラブ","ガイナーレ鳥取","レノファ山口FC","カマタマーレ讃岐","高知ユナイテッドSC","ギラヴァンツ北九州","ロアッソ熊本","鹿児島ユナイテッドFC","FC琉球","テゲバジャーロ宮崎"],
+EU:["セルティック","PSV","フライブルク","ブライトン","ボローニャ","シュトゥットガルト","レアル・ソシエダ","アヤックス","ベンフィカ","スポルティングCP","モナコ","マルセイユ","ドルトムント","バイエルン","アーセナル","リヴァプール","マンチェスター・シティ","チェルシー","バルセロナ","レアル・マドリード","インテル","ユヴェントス","ナポリ","アトレティコ・マドリード"]
+};
+const allJ=[...clubs.J1,...clubs.J2,...clubs.J3];
+const awards=["J1リーグ優勝","J2リーグ優勝","J3リーグ優勝","天皇杯優勝","ルヴァン杯優勝","ACL優勝","欧州国内リーグ優勝","国内カップ優勝","欧州CL/EL級タイトル"];
+const archetypes=[
+["若手ブレイク型",1.28],["堅実成長型",1.08],["エリート型",1.18],["怪我多め型",.78],
+["遅咲き型",.92],["海外適応型",1.15],["海外苦戦型",.82],["ベテラン復活型",1.02]
+];
+const r=(a,b)=>Math.floor(Math.random()*(b-a+1))+a, clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const avg=a=>Math.round(a.reduce((x,y)=>x+y,0)/a.length);
+function tierOf(c){if(clubs.J3.includes(c))return 1;if(clubs.J2.includes(c))return 2;if(clubs.J1.includes(c))return 3;if(clubs.EU.includes(c))return 4;return 0}
+function tierName(t){return ["アマチュア","J3","J2","J1","欧州"][t]}
+function randomClub(tier,exclude=""){let list=tier===1?clubs.J3:tier===2?clubs.J2:tier===3?clubs.J1:clubs.EU;let x=list.filter(c=>c!==exclude);return x[r(0,x.length-1)]}
+function money(n){return Math.round(n).toLocaleString()+"万円"}
+function escapeHTML(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+
+let p=null;
+
+function fillClubs(){
+ const sel=document.getElementById('club');
+ for(const t of ["J1","J2","J3"]){
+  const g=document.createElement('optgroup');g.label=t;
+  clubs[t].forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;g.appendChild(o)});
+  sel.appendChild(g);
+ }
+}
+function addEvent(x){p.events.unshift({age:p.age,text:x})}
+
+function start(){
+ try{
+ const age=+document.getElementById('age').value;
+ p={
+  name:document.getElementById('name').value||'名無し',age,pos:document.getElementById('pos').value,
+  style:document.getElementById('style').value,club:document.getElementById('club').value,
+  year:new Date().getFullYear(),retired:false,contract:2,career:[],events:[],offers:[],
+  stats:{apps:0,g:0,a:0,cs:0,minutes:0},bestTier:0,totalSalary:0,titles:[],national:0,
+  loans:0,permanentTransfers:0,internationalAttempts:0,archetype:archetypes[r(0,archetypes.length-1)],
+  peakOvr:0,peakAge:age,student:true,studentBoost:0,studentBad:0,
+  s:{PAC:r(55,72),SHO:r(45,70),PAS:r(50,75),DRI:r(48,72),DEF:r(35,70),PHY:r(45,75)}
+ };
+ if(p.pos==='GK')p.s={PAC:r(35,60),SHO:r(10,35),PAS:r(45,70),DRI:r(20,45),DEF:r(55,78),PHY:r(55,78)};
+ p.bestTier=tierOf(p.club);p.studentClub=p.club;
+ if(p.club==='高校サッカー')p.graduationAge=18;
+ else if(p.club==='大学サッカー')p.graduationAge=22;
+ else p.student=false;
+ addEvent(`${p.age}歳：${p.club}からキャリア開始。キャリアタイプは「${p.archetype[0]}」。`);
+ navigate("career");
+ }catch(err){
+   console.error('Career start error:',err);
+   alert('キャリア開始でエラーが発生しました。\n'+err.message);
+ }
+}
+
+function navigate(page){
+ document.querySelectorAll(".page").forEach(x=>x.hidden=true);
+ document.getElementById(page+"Page").hidden=false;
+ if(page==="career")renderCareer();
+ if(page==="result")renderResult();
+}
+
+function develop(){
+ let growth;
+ if(p.age<21)growth=r(2,5);
+ else if(p.age<24)growth=r(1,4);
+ else if(p.age<28)growth=r(-1,3);
+ else if(p.age<31)growth=r(-1,2);
+ else growth=r(-3,0);
+ growth*=p.archetype[1];
+ Object.keys(p.s).forEach(k=>{
+  let bias=0;
+  if(p.style==='テクニック型'&&['PAS','DRI'].includes(k))bias=1;
+  if(p.style==='スピード型'&&k==='PAC')bias=1;
+  if(p.style==='ストライカー型'&&k==='SHO')bias=1;
+  if(p.style==='守備職人型'&&k==='DEF')bias=1;
+  p.s[k]=clamp(Math.round(p.s[k]+growth+r(-1,1)+bias),15,95);
+ });
+}
+
+function calcSeason(){
+ let tier=tierOf(p.club),ovr=avg(Object.values(p.s));
+ let role=Math.max(0,ovr-(tier===3?64:tier===2?57:tier===1?50:45));
+ let minutes=clamp(20+role*1.5+r(-13,20),4,95);
+ if(p.age>29)minutes-=Math.max(0,p.age-29)*2;
+ if(p.contract<=0)minutes*=.7;
+ let apps=Math.max(0,Math.round(minutes/100*38)),g=0,a=0,cs=0;
+ if(['ST','CF','WG','AMF'].includes(p.pos)){
+  g=Math.max(0,Math.round(apps*(p.s.SHO/100)*r(11,21)/10));
+  a=Math.max(0,Math.round(apps*(p.s.PAS/100)*r(6,13)/10));
+ }else if(p.pos==='GK'){
+  cs=Math.max(0,Math.round(apps*(p.s.DEF/100)*r(15,28)/20));
+ }else{
+  g=Math.max(0,Math.round(apps*(p.s.SHO/100)*r(2,7)/10));
+  a=Math.max(0,Math.round(apps*(p.s.PAS/100)*r(6,13)/10));
+  cs=Math.max(0,Math.round(apps*(p.s.DEF/100)*r(7,16)/10));
+ }
+ if(Math.random() < (.07+(p.archetype[0]==="怪我多め型"?.07:0))){
+  addEvent(`${p.age}歳：負傷で一部期間を離脱。`);
+  apps=Math.round(apps*.65);g=Math.round(g*.65);a=Math.round(a*.65);
+ }
+ return{apps,g,a,cs,minutes};
+}
+
+function offerSalary(club,ovr,type="完全移籍"){
+ const t=tierOf(club);
+ const base=t===3?420:t===2?220:t===1?100:650;
+ const level=t===3?ovr*16:t===2?ovr*10:t===1?ovr*6:ovr*22;
+ let v=(base+level)*r(88,115)/100;
+ if(type==="レンタル移籍")v*=.95;
+ return Math.round(v);
+}
+
+function addOffer(arr,club,type,reason,duration=1){
+ if(club&&club!==p.club&&!arr.some(x=>x.club===club&&x.type===type))
+  arr.push({club,type,reason,salary:offerSalary(club,avg(Object.values(p.s)),type),duration});
+}
+
+function offerPool(tier,ovr,season){
+ let arr=[];
+ if(tier===0){
+  if(ovr>=68)addOffer(arr,randomClub(3),'完全移籍','J1トップチーム候補',2);
+  if(ovr>=58)addOffer(arr,randomClub(2),'完全移籍','J2での出場機会を見込む',2);
+  if(ovr>=48)addOffer(arr,randomClub(1),'完全移籍','J3からのプロ入り候補',2);
+ }else if(tier===1){
+  if(ovr>=62&&season.apps>=18)addOffer(arr,randomClub(2),'完全移籍','J2での戦力候補',2);
+  if(ovr>=66&&season.apps>=16&&Math.random()<.28)addOffer(arr,randomClub(2),'レンタル移籍','出場機会確保のための期限付き移籍',1);
+  if(Math.random()<.22)addOffer(arr,randomClub(1),'完全移籍','J3で主力継続',2);
+ }else if(tier===2){
+  if(ovr>=70&&season.apps>=20)addOffer(arr,randomClub(3),'完全移籍','J1の戦力候補',2);
+  if(ovr>=64)addOffer(arr,randomClub(2),'完全移籍','J2の主力候補',2);
+  if(ovr>=68&&season.apps<18&&Math.random()<.22)addOffer(arr,randomClub(3),'レンタル移籍','J1での武者修行',1);
+  if(ovr<57&&season.apps<12)addOffer(arr,randomClub(1),'完全移籍','出場機会を求める移籍',2);
+ }else if(tier===3){
+  if(ovr<59&&season.apps<12)addOffer(arr,randomClub(2),'完全移籍','J2での再起',2);
+  if(ovr>=68&&season.apps>=18)addOffer(arr,randomClub(3),'完全移籍','J1内ステップアップ',2);
+  // 若くして活躍した場合は海外挑戦率を明確に上げる
+  let breakout=(p.age<=24&&ovr>=75&&season.apps>=20&&(season.g+season.a>=10));
+  let euChance=breakout?.68:(ovr>=78&&p.age<=28&&season.apps>=22?.42:.05);
+  if(ovr>=70&&p.age<=29&&Math.random()<euChance){
+   const eu=["セルティック","PSV","フライブルク","ブライトン","ボローニャ","シュトゥットガルト","レアル・ソシエダ","アヤックス","ベンフィカ","スポルティングCP"];
+   addOffer(arr,eu[r(0,eu.length-1)],"完全移籍",breakout?"若くしてブレイク。海外クラブが獲得へ":"海外挑戦",3);
+  }
+  if(ovr>=72&&p.age<=26&&Math.random()<.16)addOffer(arr,randomClub(3),'レンタル移籍','J1別クラブで出場機会を確保',1);
+ }else if(tier===4){
+  if(ovr>=80&&season.apps>=15&&Math.random()<.28)addOffer(arr,randomClub(4),'完全移籍','欧州内ステップアップ',3);
+  if(ovr<70&&p.age<=29&&Math.random()<.16)addOffer(arr,randomClub(4),'レンタル移籍','出場機会を求めた期限付き移籍',1);
+  if((ovr<70||p.age>=29)&&Math.random()<.42)addOffer(arr,randomClub(3),'完全移籍',p.age>=30?'全盛期を超えて日本復帰':'海外挑戦からの帰国',2);
+ }
+ return arr.slice(0,3);
+}
+
+function representativeCheck(season){
+ const tier=tierOf(p.club),ovr=avg(Object.values(p.s));
+ if(tier<3||p.age<19||p.age>32)return;
+ let strong=season.apps>=24&&(season.g+season.a>=10||season.cs>=10);
+ let elite=ovr>=82&&season.apps>=20;
+ let chance=strong||elite?.22:.03;
+ if((strong||elite)&&Math.random()<chance){
+  p.national++;addEvent(`${p.age}歳：日本代表に${p.national===1?'初':'継続'}招集！ ${p.club}での活躍が評価された。`);
+ }else if(strong&&Math.random()<.14)addEvent(`${p.age}歳：代表候補入りしたが、今回は招集を逃した。`);
+}
+
+function studentEvents(){
+ if(!p.student)return;
+ const isHigh=p.studentClub==='高校サッカー';
+ if(Math.random()<.12){p.studentBoost+=2;addEvent(`${p.age}歳：${isHigh?'高校選手権':'大学大会'}で優勝。評価が急上昇。`)}
+ else if(Math.random()<.18){p.studentBoost++;addEvent(`${p.age}歳：全国大会で決勝進出。トップクラスとして注目。`)}
+ else if(Math.random()<.28)addEvent(`${p.age}歳：大会で予想外の快進撃。スカウトの注目を集める。`);
+ if(Math.random()<.07){p.studentBoost+=3;addEvent(`${p.age}歳：大会${['得点王','アシスト王','ベストイレブン'][r(0,2)]}を獲得！`)}
+ if(Math.random()<.045){p.studentBoost+=4;addEvent(`${p.age}歳：大会MVP！一気にプロ注目の存在へ。`)}
+ if(Math.random()<.055){p.studentBoost+=3;addEvent(`${p.age}歳：年代別代表・大学選抜に選出。`)}
+ if(Math.random()<.13){addEvent(`${p.age}歳：負傷で大会を一部欠場。`);Object.keys(p.s).forEach(k=>p.s[k]=clamp(p.s[k]+r(-2,0),15,95))}
+ if(Math.random()<.025){p.studentBad+=4;Object.keys(p.s).forEach(k=>p.s[k]=clamp(p.s[k]+r(-7,-3),15,95));addEvent(`${p.age}歳：大きな怪我で長期離脱。`)}
+}
+
+function maybeTitle(season){
+ const tier=tierOf(p.club),ovr=avg(Object.values(p.s));
+ let chance=tier===3?.018:tier===4?.028:.012;
+ if(ovr>=82)chance*=2;
+ if(Math.random()<chance){
+  let pool=tier===4?awards.slice(6):tier===3?awards.slice(0,5):awards.slice(1,3);
+  const title=pool[r(0,pool.length-1)];
+  p.titles.push({year:p.year,age:p.age,title,club:p.club});
+  addEvent(`${p.age}歳：${p.club}で${title}を獲得！`);
+ }
+}
+
+function nextYear(){
+ if(!p||p.retired||p.offers.length)return;
+ p.age++;p.year++;
+ if(p.student){
+  studentEvents();develop();
+  if(p.age>=p.graduationAge){
+   p.student=false;p.contract=2;
+   const gradOvr=clamp(avg(Object.values(p.s))+(p.studentBoost||0)-(p.studentBad||0),15,95);
+   p.s.PAC=clamp(p.s.PAC+(gradOvr-avg(Object.values(p.s)))*.15,15,95);
+   p.offers=offerPool(0,gradOvr,{apps:0,g:0,a:0,cs:0});
+   if(!p.offers.length){addEvent(`${p.age}歳：卒業。プロ契約に届かず、現役終了。`);finishCareer()}
+   else addEvent(`${p.age}歳：${p.studentClub}を卒業。プロクラブからオファー！`);
+  }
+  renderCareer();return;
+ }
+ p.contract--;
+ develop();
+ let season=calcSeason(),ovr=avg(Object.values(p.s));
+ p.peakOvr=Math.max(p.peakOvr,ovr);if(ovr>=p.peakOvr)p.peakAge=p.age;
+ let salary=Math.round((70+ovr*11+tierOf(p.club)*320)*r(85,115)/100);
+ p.stats.apps+=season.apps;p.stats.g+=season.g;p.stats.a+=season.a;p.stats.cs+=season.cs;p.stats.minutes+=season.minutes;
+ p.totalSalary+=salary;
+ p.career.push({year:p.year,age:p.age,club:p.club,ovr,apps:season.apps,g:season.g,a:season.a,cs:season.cs,salary,minutes:season.minutes});
+ p.bestTier=Math.max(p.bestTier,tierOf(p.club));
+ representativeCheck(season);maybeTitle(season);
+
+ // 欧州挑戦→短期苦戦→帰国パターン
+ if(tierOf(p.club)===4 && p.internationalAttempts>0 && p.age<=30 && season.apps<10 && Math.random()<.34){
+  addEvent(`${p.age}歳：海外で出場機会を確保できず、2年以内の日本帰国を検討。`);
+  p.forcedReturn=true;
+ }
+ if(p.age>=35&&season.apps<8){p.retired=true;addEvent(`${p.age}歳：出場機会が減り、現役引退。`)}
+ if(p.age>=39){p.retired=true;addEvent(`${p.age}歳：現役引退。キャリア終了。`)}
+ if(!p.retired){
+  if(p.forcedReturn && tierOf(p.club)===4){
+   p.offers=[{club:randomClub(3),"type":"完全移籍","reason":"海外挑戦を終えて日本へ帰国","salary:offerSalary(randomClub(3),ovr),"duration":2}];
+   p.forcedReturn=false;
+  }else if(p.contract<=0){
+   p.offers=offerPool(tierOf(p.club),ovr,season);
+   if(!p.offers.length){
+    if(tierOf(p.club)>=2&&Math.random()<.72){p.contract=1;addEvent(`${p.age}歳：契約を1年延長。`)}
+    else{
+     addEvent(`${p.age}歳：契約満了。${p.club}を退団。`);
+     let fallback=tierOf(p.club)>1?randomClub(tierOf(p.club)-1):null;
+     if(fallback)p.offers=[{club:fallback,type:"完全移籍",reason:"次のクラブを探す",salary:offerSalary(fallback,ovr),duration:2}];
+     else finishCareer();
+    }
+   }
+  }else if(Math.random()<.19)p.offers=offerPool(tierOf(p.club),ovr,season);
+ }
+ renderCareer();
+}
+
+function acceptOffer(i){
+ const o=p.offers[i];if(!o)return;
+ const old=p.club;
+ p.club=o.club;p.contract=o.duration||2;p.offers=[];
+ if(o.type==="レンタル移籍"){
+  p.loans++;
+  addEvent(`${p.age}歳：${old}から${o.club}へレンタル移籍。${o.reason}。`);
+  p.loanReturn={club:old,year:p.year+(o.duration||1)};
+ }else{
+  p.permanentTransfers++;
+  if(tierOf(o.club)===4&&tierOf(old)!==4)p.internationalAttempts++;
+  addEvent(`${p.age}歳：${old}から${o.club}へ完全移籍。提示年俸 ${money(o.salary)}。`);
+ }
+ renderCareer();
+}
+
+function stay(){
+ p.offers=[];p.contract=Math.max(1,p.contract);
+ addEvent(`${p.age}歳：オファーを断り、${p.club}に残留。`);
+ renderCareer();
+}
+
+function checkLoanReturn(){
+ if(p.loanReturn && p.year>=p.loanReturn.year){
+  const old=p.club;
+  p.club=p.loanReturn.club;p.loanReturn=null;p.contract=1;
+  addEvent(`${p.age}歳：レンタル期間終了。${old}から${p.club}へ復帰。`);
+ }
+}
+
+function finishCareer(){
+ if(p.retired)return;
+ p.retired=true;
+ addEvent(`${p.age}歳：現役引退。キャリア終了！`);
+ setTimeout(()=>navigate("result"),120);
+}
+
+function renderCareer(){
+ if(!p)return;
+ checkLoanReturn();
+ const ovr=avg(Object.values(p.s)),offers=p.offers;
+ document.getElementById('seasonLabel').textContent=p.year+'シーズン';
+ let offerHTML='';
+ if(offers.length&&!p.retired){
+  offerHTML=`<div class="notice"><b>移籍オファー</b><br><span class="muted">完全移籍・レンタル移籍から選択できます。残留も可能です。</span></div>
+  <div class="offerGrid">${offers.map((o,i)=>`<div class="offer"><h4>${escapeHTML(o.club)}</h4><p>${o.type} / ${tierName(tierOf(o.club))}</p><p>${escapeHTML(o.reason)}</p><div class="salary">提示年俸：${money(o.salary)}</div><button type="button" data-offer="${i}">${o.type==="レンタル移籍"?"レンタルする":"このクラブへ移籍"}</button></div>`).join('')}</div>
+  <button id="stayBtn" class="secondary" type="button">残留する</button>`;
+ }
+ document.getElementById('careerPage').innerHTML=`
+ <div class="hero"><div><div class="name">${escapeHTML(p.name)}</div>
+ <span class="badge">${p.pos}</span><span class="badge">${p.style}</span><span class="badge">${escapeHTML(p.club)}</span>
+ ${p.national?`<span class="badge">代表 ${p.national}回</span>`:''}
+ <span class="badge">${p.archetype[0]}</span></div><div class="ovr">${ovr}</div></div>
+ <div class="statgrid">${Object.entries(p.s).map(([k,v])=>`<div class="stat"><b>${Math.round(v)}</b><span>${k}</span></div>`).join('')}</div>
+ <div class="meta"><div><small>年齢</small><b>${p.age}歳</b></div><div><small>通算出場</small><b>${p.stats.apps}</b></div><div><small>通算得点</small><b>${p.stats.g}</b></div><div><small>通算A</small><b>${p.stats.a}</b></div></div>
+ <div class="meta"><div><small>最高OVR</small><b>${p.peakOvr}</b></div><div><small>最高到達</small><b>${tierName(p.bestTier)}</b></div><div><small>移籍</small><b>完全 ${p.permanentTransfers} / レンタル ${p.loans}</b></div><div><small>年俸総額</small><b>${money(p.totalSalary)}</b></div></div>
+ ${offerHTML||`<div class="actions"><button id="nextBtn" type="button">${p.retired?'リザルトを見る':'▶ 1年進める'}</button></div>`}
+ <h3>シーズン履歴</h3>${p.career.length?`<div style="overflow:auto"><table><thead><tr><th>年齢</th><th>クラブ</th><th>OVR</th><th>出場</th><th>G</th><th>A</th><th>CS</th><th>年俸</th></tr></thead><tbody>${[...p.career].reverse().map(x=>`<tr><td>${x.age}</td><td style="text-align:left">${escapeHTML(x.club)}</td><td>${x.ovr}</td><td>${x.apps}</td><td>${x.g}</td><td>${x.a}</td><td>${x.cs}</td><td>${money(x.salary)}</td></tr>`).join('')}</tbody></table></div>`:"<div class='empty'>まだシーズン成績はありません。</div>"}
+ <h3>イベント</h3><div class="log">${p.events.map(e=>`<div class="event"><b>${e.age}歳</b>　${escapeHTML(e.text)}</div>`).join('')}</div>`;
+ const next=document.getElementById('nextBtn');
+ if(next)next.addEventListener('click',()=>p.retired?navigate("result"):nextYear());
+ document.querySelectorAll('[data-offer]').forEach(b=>b.addEventListener('click',()=>acceptOffer(+b.dataset.offer)));
+ const stayBtn=document.getElementById('stayBtn');if(stayBtn)stayBtn.addEventListener('click',stay);
+}
+
+function renderResult(){
+ document.getElementById('seasonLabel').textContent="CAREER RESULT";
+ const seasons=p.career.length;
+ const goals=p.stats.g,assists=p.stats.a;
+ const topTitles=p.titles.length?p.titles.map(x=>`<li>${x.year}：${escapeHTML(x.title)}（${escapeHTML(x.club)}）</li>`).join(''):"<li>獲得タイトルなし</li>";
+ document.getElementById('resultPage').innerHTML=`
+ <div class="notice"><b>🏁 キャリア終了</b><br>${escapeHTML(p.name)}の現役生活が終了しました。</div>
+ <div class="hero"><div><div class="name">${escapeHTML(p.name)}</div><span class="badge">${p.age}歳で引退</span><span class="badge">最高到達：${tierName(p.bestTier)}</span></div><div class="ovr">${p.peakOvr}</div></div>
+ <div class="meta"><div><small>現役年数</small><b>${seasons}シーズン</b></div><div><small>年俸総額</small><b>${money(p.totalSalary)}</b></div><div><small>通算出場</small><b>${p.stats.apps}</b></div><div><small>通算得点</small><b>${goals}</b></div></div>
+ <div class="meta"><div><small>通算アシスト</small><b>${assists}</b></div><div><small>クリーンシート</small><b>${p.stats.cs}</b></div><div><small>日本代表</small><b>${p.national}回</b></div><div><small>完全/レンタル</small><b>${p.permanentTransfers}/${p.loans}</b></div></div>
+ <h3>🏆 獲得タイトル</h3><ul>${topTitles}</ul>
+ <h3>📊 キャリアハイライト</h3><div class="log">${p.events.slice(0,14).map(e=>`<div class="event"><b>${e.age}歳</b>　${escapeHTML(e.text)}</div>`).join('')}</div>
+ <div class="actions"><button id="againBtn" type="button">もう一度プレイ</button></div>`;
+ document.getElementById('againBtn').addEventListener('click',resetSim);
+}
+
+function resetSim(){
+ p=null;
+ document.getElementById('seasonLabel').textContent='未開始';
+ const career=document.getElementById('careerPage');
+ const result=document.getElementById('resultPage');
+ if(career){
+   career.hidden=false;
+   career.innerHTML='<div class="empty">選手を作成するとキャリアが始まります。</div>';
+ }
+ if(result){
+   result.hidden=true;
+   result.innerHTML='';
+ }
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+ try{
+   fillClubs();
+   const startBtn=document.getElementById('startBtn');
+   const resetBtn=document.getElementById('resetBtn');
+   if(startBtn) startBtn.addEventListener('click',start);
+   if(resetBtn) resetBtn.addEventListener('click',resetSim);
+ }catch(err){
+   console.error('Simulator initialization error:',err);
+   const main=document.getElementById('main');
+   if(main) main.innerHTML='<div class="notice">初期化エラーが発生しました。ページを再読み込みしてください。<br><small>'+escapeHTML(err.message)+'</small></div>';
+ }
+});
+</script>
+</body></html>
